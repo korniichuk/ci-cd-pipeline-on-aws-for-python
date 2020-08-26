@@ -113,3 +113,6 @@ Click `Link to execution details`:
 
 Finally, you can see reason of failure. Our new Python code with typo cannot pass unit tests:
 ![aws_codepipeline_-_build_failure_reason.png](img/aws_codepipeline_-_build_failure_reason.png "AWS CodePipeline. Build failure reason")
+
+## Sources
+https://github.com/aws-samples/codepipeline-nested-cfn/blob/master/codepipeline-cfn-codebuild.yml
