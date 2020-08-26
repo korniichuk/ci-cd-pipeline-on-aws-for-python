@@ -8,6 +8,7 @@
 * **[Create CI/CD pipeline. CLI](#create-cicd-pipeline-cli)**
 * **[Create CI/CD pipeline. Console](#create-cicd-pipeline-console)**
 * **[Validate created pipeline](#validate-created-pipeline)**
+* **[Sources](#sources)**
 
 ## Intro
 This repository includes AWS CloudFormation template for CI/CD pipeline on AWS for Python. CI/CD pipeline based on [AWS CodeCommit](https://aws.amazon.com/codecommit/) (à la GitHub), [AWS CodeBuild](https://aws.amazon.com/codebuild/) (à la Jenkins), and [AWS CodePipeline](https://aws.amazon.com/codepipeline/) (continuous delivery) services. You can see visualization below:
