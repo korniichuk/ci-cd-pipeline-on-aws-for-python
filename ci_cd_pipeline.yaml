@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation template for CI/CD pipeline on AWS for Python
+Resources:
+
+  CodeBuildIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: demo-ci-cd-pipeline-codebuild-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/service-role/"
+      Policies:
+        -
+          PolicyName: demo-ci-cd-pipeline-codebuild-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:GetBucketAcl"
+                  - "s3:GetBucketLocation"
+                Resource:
+                  - !GetAtt CodePipelineArtifacts.Arn
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                Resource:
+                  - !Sub ${CodePipelineArtifacts.Arn}/*
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/demo-ci-cd-pipeline*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/demo-ci-cd-pipeline:*
+
+  CodePipelineIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: demo-ci-cd-pipeline-codepipeline-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/service-role/"
+      Policies:
+        -
+          PolicyName: demo-ci-cd-pipeline-codepipeline-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:GetBucketPolicy"
+                Resource:
+                  - !GetAtt CodePipelineArtifacts.Arn
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                  - "s3:DeleteObject"
+                Resource:
+                  - !Sub ${CodePipelineArtifacts.Arn}/*
+              -
+                Effect: "Allow"
+                Action:
+                  - "codecommit:CancelUploadArchive"
+                  - "codecommit:GetBranch"
+                  - "codecommit:GetCommit"
+                  - "codecommit:GetUploadArchiveStatus"
+                  - "codecommit:UploadArchive"
+                Resource: !GetAtt CodeCommitRepository.Arn
+              -
+                Effect: "Allow"
+                Action:
+                  - "codebuild:BatchGetBuilds"
+                  - "codebuild:StartBuild"
+                Resource:
+                  -  !GetAtt CodeBuildProject.Arn
+                  -  !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:build/demo-ci-cd-pipeline:*
+
+  CodePipelineArtifacts:
+    Type: AWS::S3::Bucket
+
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: demo-ci-cd-pipeline
+      RepositoryDescription: CI/CD pipeline on AWS for Python
+      Code:
+        S3:
+          Bucket: korniichuk.share
+          Key: code/ci_cd_pipeline_init_code_20200827.zip
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: demo-ci-cd-pipeline
+      Source:
+        Type: CODEPIPELINE
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0  # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-available.html
+        ComputeType: BUILD_GENERAL1_SMALL
+      ServiceRole: !GetAtt CodeBuildIAMRole.Arn
+      TimeoutInMinutes: 15
+      QueuedTimeoutInMinutes: 60
+      LogsConfig: 
+        CloudWatchLogs:
+          Status: ENABLED
+
+  CodePipelinePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: demo-ci-cd-pipeline
+      ArtifactStore:
+          Location: !Ref CodePipelineArtifacts
+          Type: S3
+      RoleArn: !GetAtt CodePipelineIAMRole.Arn
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: '1'
+              Configuration:
+                RepositoryName: demo-ci-cd-pipeline
+                BranchName: master
+                PollForSourceChanges: true
+              OutputArtifacts:
+                -
+                  Name: SourceOutput
+              RunOrder: 1
+        -
+          Name: Build
+          Actions:
+            -
+              Name: Build
+              InputArtifacts:
+                -
+                  Name: SourceOutput
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              RunOrder: 1
