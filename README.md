@@ -84,7 +84,7 @@ $ cd demo-ci-cd-pipeline
 ```
 
 Next we need to change our Python code and send update to AWS CodeCommit repository. For example, you can change code of `sample.py` file to new code with typo:
-```
+```python
 # -*- coding: utf-8 -*-
 # Name: sample
 # Version: 0.1a2
