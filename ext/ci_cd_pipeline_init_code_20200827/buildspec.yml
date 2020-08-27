@@ -1,0 +1,22 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+
+      # Install Python packages
+      - pip install --requirement requirements.txt
+
+  pre_build:
+    commands:
+
+      # Validate Python code against coding style (aka PEP8) and programming errors
+      - flake8
+
+      # Validate Python code against coding style (aka PEP8), programming errors, and cyclomatic complexity
+      - flake8 --max-complexity 10
+
+      # Run unit tests
+      - pytest
